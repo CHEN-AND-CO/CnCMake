@@ -1,2 +1,3 @@
-# CnCMake
-Chen &amp; Co Makefile tool
+# CnCMake / Chen &amp; Co Makefile tool
+
+Easier project launch
