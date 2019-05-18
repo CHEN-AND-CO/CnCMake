@@ -10,69 +10,94 @@ R_WILDCARD=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call R_WILDCARD,$d/,$2
 FILTER_OUT=$(foreach v,$(2),$(if $(findstring $(1),$(v)),,$(v)))
 empty:=
 
+# SSH/SCP credentials
+REMOTE_USER = root
+REMOTE_HOST = 127.0.0.1
+REMOTE_PATH = ~/
 
 # Build config and output
 BINARY_NAME = $(notdir $(CURDIR))
-OUTPUT_FOLDER = 
+OUTPUT_FOLDER = .
 CFLAGS = -g -Wall -Wextra -Os
 LDFLAGS = -lm -ansi -lpthread
-
+# Info output
+$(info Make started, binary name :$(BINARY_NAME))
+$(info Output folder :$(OUTPUT_FOLDER))
+$(info Compiler Flags :$(CFLAGS))
+$(info Linker Flags :$(LDFLAGS))
+$(info )
 
 # Project Type
-ifeq ($(PROJECT_TYPE),c)		# C Project Type
+ifneq (,$(filter c C,$(PROJECT_TYPE)))				# C Project Type	
 	SRC_EXT = c
 	INC_EXT = h
 	COMPILER = gcc
 	STD_NORM = gnu11
-else ifeq ($(PROJECT_TYPE),c++)	# C++ Project Type
+else ifneq (,$(filter c++ C++,$(PROJECT_TYPE)))		# C++ Project Type
 	SRC_EXT = cpp
 	INC_EXT = hpp
 	COMPILER = g++
 	STD_NORM = c++17
-else							# Default Project Type
-	PROJECT_TYPE = c++
+else												# Default Project Type
+	PROJECT_TYPE = C++
 	SRC_EXT = cpp
 	INC_EXT = hpp
 	COMPILER = g++
 	STD_NORM = c++17
 endif
+$(info $(PROJECT_TYPE) Project detected, source files are *.$(SRC_EXT), headers files are *.$(INC_EXT), using $(COMPILER) with --std=$(STD_NORM))
+$(info )
 
 
-ifeq ($(TARGET),)
-	COMPILER_PREFIX =
-else ifeq ($(TARGET),rpi1)
+ifneq (,$(filter rpi1 RPI1,$(TARGET)))
 	COMPILER_PREFIX = arm-linux-gnueabihf-
 	OPT_CFLAGS = -mcpu=arm1176jzf-s -mfloat-abi=hard -mfpu=vfp -mtune=arm1176jzf-s -static-libstdc++
 	EXTENSION = -rpi1
-else ifeq ($(TARGET),rpi2)
+else ifneq (,$(filter rpi2 RPI2,$(TARGET)))
 	COMPILER_PREFIX = arm-linux-gnueabihf-
 	OPT_CFLAGS = -mcpu=cortex-a7 -mfloat-abi=hard -mfpu=neon-vfpv4 -mtune=cortex-a7 -static-libstdc++
 	EXTENSION = -rpi2
-else ifeq ($(TARGET),rpi3)
+else ifneq (,$(filter rpi3 RPI3,$(TARGET)))
 	COMPILER_PREFIX = arm-linux-gnueabihf-
 	OPT_CFLAGS = -mcpu=cortex-a53 -mfloat-abi=hard -mfpu=neon-fp-armv8 -mneon-for-64bits -mtune=cortex-a53 -static-libstdc++
 	EXTENSION = -rpi3
-else ifeq ($(TARGET),beaglebb)
+else ifneq (,$(filter beaglebb BEAGLEBB,$(TARGET)))
 	COMPILER_PREFIX = arm-linux-gnueabihf-
 	OPT_CFLAGS = -mcpu=cortex-a8 -mfloat-abi=hard -mfpu=neon -mtune=cortex-a8 -static-libstdc++
 	EXTENSION = -beaglebb
 endif
+ifneq ($(TARGET),)
+	$(info Target $(TARGET) specified, using optimized CFLAGS : $(OPT_CFLAGS) and $(EXTENSION) extension)
+	$(info )
+endif
 
 
 # Source files detection
-ALLSRC := $(call rwildcard,,*.$(SRC_EXT))
+ALLSRC := $(call R_WILDCARD,,*.$(SRC_EXT))
 FILTERED_SRC = $(ALLSRC)					#$(call FILTER_OUT,THINGS_TO_FILTER,$(ALLSRC))
 SRCDIR = $(sort $(dir $(FILTERED_SRC)))
+$(info Detected source files : $(ALLSRC))
+$(info After filter : $(FILTERED_SRC))
+$(info Detected source files directories : $(SRCDIR))
+$(info )
 
 # Header files detection
-ALLINC := $(call rwildcard,,*.$(INC_EXT))
+ALLINC := $(call R_WILDCARD,,*.$(INC_EXT))
 FILTERED_INC = $(ALLINC)					#$(call FILTER_OUT,THINGS_TO_FILTER,$(ALLINC))
 INCDIR = $(sort $(dir $(FILTERED_INC)))
+$(info Detected header files : $(ALLINC))
+$(info After filter : $(FILTERED_INC))
+$(info Detected header files directories : $(INCDIR))
+$(info )
 
 # Lib files detection
-ALLLIB := $(call rwildcard,,*.a) $(call rwildcard,,*.lib)
+ALLLIB := $(call R_WILDCARD,,*.a) $(call R_WILDCARD,,*.lib)
 FILTERED_LIB = $(ALLLIB)					#$(call FILTER_OUT,THINGS_TO_FILTER,$(ALLLIB))
 LIBDIR = $(sort $(dir $(FILTERED_LIB)))
+$(info Detected library files : $(ALLLIB))
+$(info After filter : $(FILTERED_LIB))
+$(info Detected library files directories : $(LIBDIR))
+$(info )
 
 
 # Includes / Libs / Flags
@@ -80,23 +105,25 @@ INCLUDES = $(addprefix -I,$(subst $(addsuffix /,$(CURDIR)),,$(realpath $(INCDIR)
 CFLAGS += -std=$(STD_NORM) $(OPT_CFLAGS)												# Compiler flags
 LDFLAGS += 																				# Libs for all systems
 LDFLAGS += $(addprefix -L,$(subst $(addsuffix /,$(CURDIR)),,$(realpath $(LIBDIR))))		# Static libs inclusion
-NOM = $(basename $(notdir $(SRC)))
-OBJ = $(addprefix $(OUTPUT_FOLDER),$(addsuffix .o, $(NOM)))
-
-
-# SSH/SCP credentials
-REMOTE_USER = root
-REMOTE_HOST = 127.0.0.1
-REMOTE_PATH = ~/
-
+NOM = $(basename $(notdir $(FILTERED_SRC)))
+OBJ = $(addprefix $(OUTPUT_FOLDER)/,$(addsuffix .o, $(NOM)))
+$(info Detected includes : $(INCLUDES))
+$(info Updated Compiler Flags : $(CFLAGS))
+$(info Updated Linker Flags : $(LDFLAGS))
+$(info Generated files name : $(NOM))
+$(info Object files target : $(OBJ))
+$(info )
 
 # Compiler choice
 ifeq ($(CC),cc)									# If CC set to "cc"				
 	CC = $(COMPILER_PREFIX)$(COMPILER)			# Forced to default compiler
-endif
-ifeq ($(CC),)									# If no c or c++ compiler set
+else ifneq ($(CXX),)
+	CC = $(COMPILER_PREFIX)$(CXX)
+else ifeq ($(CC),)								# If no c or c++ compiler set
 	CC = $(COMPILER_PREFIX)$(COMPILER)			# Forced to default compiler
 endif
+$(info Used compiler is now : $(CC))
+$(info )
 
 
 # OS Detection
@@ -105,6 +132,7 @@ ifeq ($(OS),Windows_NT)     					# Windows OS
 else
     detected_OS := $(shell uname) 				# Unix Based OS
 endif
+$(info OS detected as $(detected_OS))
 
 # Apply specific parameters for Windows
 ifeq ($(detected_OS),Windows)
@@ -112,41 +140,47 @@ ifeq ($(detected_OS),Windows)
 	ifeq ($(TARGET),)
 		EXTENSION = .exe
 	endif
+else
+	DELETE_CMD = rm -f
 endif
+$(info Delete command set as "$(DELETE_CMD)" and binary extension as "$(EXTENSION)")
 # DELETE CORRECTION FOR WINDOWS
 ifeq ($(detected_OS),Windows)
 	DELETE_OBJ = $(subst /,"\", $(OBJ))
 else 
 	DELETE_OBJ = $(OBJ)
 endif
+$(info Object file delete target is now : $(DELETE_OBJ))
+$(info )
 
+all: $(OUTPUT_FOLDER)/$(BINARY_NAME)$(EXTENSION)									# Build all executables
 
-all: $(OUTPUT_FOLDER)$(BINARY_NAME)$(EXTENSION)									# Build all executables
+rebuild: remake																		# Clean and build all executables
+	$(info "remake" alias)
 
-rebuild: remake												# Clean and build all executables
+remake: clean $(OUTPUT_FOLDER)/$(BINARY_NAME)$(EXTENSION)							# Same as rebuild
+	$(info Cleaning and Building everything...)
 
-remake: clean $(OUTPUT_FOLDER)$(BINARY_NAME)$(EXTENSION)							# Same as rebuild
-
-$(OUTPUT_FOLDER)$(BINARY_NAME)$(EXTENSION): $(OBJ)
-	$(CC) $(CFLAGS) $(OBJ) $(LDFLAGS) -o $(OUTPUT_FOLDER)$(BINARY_NAME)$(EXTENSION)
+$(OUTPUT_FOLDER)/$(BINARY_NAME)$(EXTENSION): $(OBJ)
+	$(CC) $(CFLAGS) $(OPT_CFLAGS) $(OBJ) $(LDFLAGS) -o $(OUTPUT_FOLDER)/$(BINARY_NAME)$(EXTENSION)
 
 # Build all the .o files
-$(OUTPUT_FOLDER)%.o: %.$(SRC_EXT)
-	$(CC) $(CFLAGS) -c $< $(INCLUDES) -o $@
+$(OUTPUT_FOLDER)/%.o: %.$(SRC_EXT)
+	$(CC) $(CFLAGS) $(OPT_CFLAGS) -c $< $(INCLUDES) -o $@
 	
 # Remove all files generated by compilation (executables included)
 clean:
-	$(DELETE_CMD) $(DELETE_OBJ) $(OUTPUT_FOLDER)$(BINARY_NAME)$(EXTENSION) *.gch
+	$(DELETE_CMD) $(DELETE_OBJ) $(OUTPUT_FOLDER)/$(BINARY_NAME)$(EXTENSION) *.gch
 
 # Remove all files generated by compilation (except executables)
 clear:
 	$(DELETE_CMD) $(DELETE_OBJ) *.gch
 
-run: $(OUTPUT_FOLDER)$(BINARY_NAME)$(EXTENSION)
-	./$(OUTPUT_FOLDER)$(BINARY_NAME)$(EXTENSION)
+run: $(OUTPUT_FOLDER)/$(BINARY_NAME)$(EXTENSION)
+	$(OUTPUT_FOLDER)/$(BINARY_NAME)$(EXTENSION)
 
 upload: remake
-	scp ./$(OUTPUT_FOLDER)$(BINARY_NAME)$(EXTENSION) $(REMOTE_USER)@$(REMOTE_HOST):$(REMOTE_PATH)
+	scp $(OUTPUT_FOLDER)/$(BINARY_NAME)$(EXTENSION) $(REMOTE_USER)@$(REMOTE_HOST):$(REMOTE_PATH)
 
 remote-run: upload
 	ssh $(REMOTE_USER)@$(REMOTE_HOST) '$(REMOTE_PATH)$(BINARY_NAME)$(EXTENSION)'
