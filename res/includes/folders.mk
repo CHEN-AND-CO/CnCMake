@@ -1,0 +1,10 @@
+BINDIR = bin
+SRCDIR = src
+INCDIR = inc
+OBJDIR = obj
+LIBDIR = lib
+DOCDIR = doc
+SQLDIR = sql
+RESDIR = res
+TEMPDIR = $(HOME)/Bureau/Mes_Documents/Programmation/Makefiles/Templates
+MAINDOCDIR = $(HOME)/Bureau/Mes_Documents/Docs
