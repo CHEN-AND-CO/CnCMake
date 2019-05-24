@@ -133,7 +133,7 @@ $(info Used compiler is now : $(CC))
 $(info )
 
 # Config override
-$(foreach line, $(CONFIG), $(info $(subst =, ,$(strip $(line)))))
+$(foreach line, $(CONFIG), $(if $(filter BINARY_NAME,$(subst =, ,$(strip $(line)))),$(info $(subst =, ,$(strip $(line)))),))
 
 # OS Detection
 ifeq ($(OS),Windows_NT)     					# Windows OS
