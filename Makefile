@@ -1,1 +1,0 @@
-/home/mathias/Bureau/Algo/MergeStructFiles/res/makefile

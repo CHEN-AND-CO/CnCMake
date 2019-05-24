@@ -6,9 +6,16 @@
 
 
 # Tools
+###_TOOL_BLOCK_###
 R_WILDCARD=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call R_WILDCARD,$d/,$2))
 FILTER_OUT=$(foreach v,$(2),$(if $(findstring $(1),$(v)),,$(v)))
 empty:=
+###_END_BLOCK_###
+
+CONFIG_PATH := make.conf
+CONFIG 		:= $(file < $(CONFIG_PATH))
+$(info $(CONFIG))
+$(info )
 
 # SSH/SCP credentials
 REMOTE_USER = root
@@ -125,6 +132,8 @@ endif
 $(info Used compiler is now : $(CC))
 $(info )
 
+# Config override
+$(foreach line, $(CONFIG), $(info $(subst =, ,$(strip $(line)))))
 
 # OS Detection
 ifeq ($(OS),Windows_NT)     					# Windows OS
